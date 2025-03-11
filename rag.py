@@ -7,7 +7,11 @@ from typing import List, Dict
 def json_parser(json_obj: str) -> bool:
     pass
 
-def get_articles(db_path: str = "news.db") -> List[Dict]:
+def select_relevant_categories(categories: List[str], question: str, model: str = "deepseek-r1:1.5b") -> List[str]:
+    promt = ()
+    return tuple(categories)
+
+def get_articles(question: str, db_path: str = "news.db") -> List[Dict]:
     #Gets all articles from the Database
     """
     DB Data Source:
@@ -17,20 +21,28 @@ def get_articles(db_path: str = "news.db") -> List[Dict]:
     """
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
-    query = "SELECT headline,category,short_description,date FROM News LIMIT 20"
+
+    query = "SELECT DISTINCT category FROM News LIMIT 20"
     cursor.execute(query)
     rows = cursor.fetchall()
 
-    articles = [{"headline":headline, "category":category, "short_description":short_description, "date":date} for headline,category,short_description,date in rows]
+    categories = [category for category, in rows]
+
+    relevant_categories = select_relevant_categories(categories,question)
+
+
+    query = f"SELECT headline,short_description,date FROM News WHERE category in {tuple(relevant_categories)} LIMIT 20"
+    cursor.execute(query)
+    rows = cursor.fetchall()
+
+    articles = [{"headline":headline, "short_description":short_description, "date":date} for headline,category,short_description,date in rows]
     conn.close()
     return articles
 
 
 def select_relevant_articles(article: Dict, idx: int, question: str, model: str = "deepseek-r1:1.5b") -> bool:
     #Decides if given article is relevant
-    prompt = """
-
-        """
+    prompt = ()
     pass
 
 def final_answer(question: str, articles: List[Dict]):
@@ -38,7 +50,7 @@ def final_answer(question: str, articles: List[Dict]):
     pass
 
 def rag(question: str) -> str:
-    articles = get_articles("DB")
+    articles = get_articles()
     
     prompt = (
         "Hello"
