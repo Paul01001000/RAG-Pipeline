@@ -11,7 +11,7 @@ def select_relevant_categories(categories: List[str], question: str, model: str 
     promt = ()
     return tuple(categories)
 
-def get_articles(question: str, db_path: str = "news.db") -> List[Dict]:
+def get_articles(question: str = "", db_path: str = "news.db") -> List[Dict]:
     #Gets all articles from the Database
     """
     DB Data Source:
@@ -22,7 +22,7 @@ def get_articles(question: str, db_path: str = "news.db") -> List[Dict]:
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
-    query = "SELECT DISTINCT category FROM News LIMIT 20"
+    query = "SELECT DISTINCT category FROM News"
     cursor.execute(query)
     rows = cursor.fetchall()
 
@@ -35,7 +35,7 @@ def get_articles(question: str, db_path: str = "news.db") -> List[Dict]:
     cursor.execute(query)
     rows = cursor.fetchall()
 
-    articles = [{"headline":headline, "short_description":short_description, "date":date} for headline,category,short_description,date in rows]
+    articles = [{"headline":headline, "short_description":short_description, "date":date} for headline,short_description,date in rows]
     conn.close()
     return articles
 
