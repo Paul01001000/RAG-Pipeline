@@ -7,9 +7,17 @@ from typing import List, Dict
 def json_parser(json_obj: str) -> bool:
     pass
 
-def select_relevant_categories(categories: List[str], question: str, model: str = "deepseek-r1:1.5b") -> List[str]:
-    promt = ()
-    return tuple(categories)
+def select_relevant_category(category: str, question: str, model: str = "deepseek-r1:1.5b") -> bool:
+    return True
+    prompt = ()
+    message = [
+        {
+            'role': 'user',
+            'content': prompt
+        }
+    ]
+    res = chat(model,messages=message)
+    return json_parser(res.message.content)
 
 def get_articles(question: str = "", db_path: str = "news.db") -> List[Dict]:
     #Gets all articles from the Database
@@ -28,11 +36,11 @@ def get_articles(question: str = "", db_path: str = "news.db") -> List[Dict]:
 
     categories = [category for category, in rows]
 
-    relevant_categories = select_relevant_categories(categories,question)
+    relevant_categories = [cat for cat in categories if select_relevant_category(cat,question)]
 
-
-    query = f"SELECT headline,short_description,date FROM News WHERE category in {tuple(relevant_categories)} LIMIT 20"
-    cursor.execute(query)
+    #SELECT headline,short_description,date FROM News WHERE category in ('cat1','cat2',...) LIMIT 20;
+    query = "SELECT headline,short_description,date FROM News WHERE category in ( " + ",".join(["?"]*len(relevant_categories)) + " ) LIMIT 20"
+    cursor.execute(query,relevant_categories)
     rows = cursor.fetchall()
 
     articles = [{"headline":headline, "short_description":short_description, "date":date} for headline,short_description,date in rows]
@@ -40,28 +48,48 @@ def get_articles(question: str = "", db_path: str = "news.db") -> List[Dict]:
     return articles
 
 
-def select_relevant_articles(article: Dict, idx: int, question: str, model: str = "deepseek-r1:1.5b") -> bool:
+def select_relevant_article(article: Dict, question: str, model: str = "deepseek-r1:1.5b") -> bool:
     #Decides if given article is relevant
+    return True
     prompt = ()
-    pass
+    message = [
+        {
+            'role': 'user',
+            'content': prompt
+        }
+    ]
+    res = chat(model,messages=message)
+    return json_parser(res.message.content)
 
-def final_answer(question: str, articles: List[Dict]):
+def final_answer(question: str, articles: List[Dict],model: str = "deepseek-r1:1.5b") -> str:
     #Returns final answer to question by using the selected articles
-    pass
+    prompt = ()
+    message = [
+        {
+            'role': 'user',
+            'content': prompt
+        }
+    ]
+    res = chat(model,messages=message)
+    return res.message.content
 
 def rag(question: str) -> str:
-    articles = get_articles()
-    
-    prompt = (
-        "Hello"
-        "World"
-    )
+    print("Start searching for interesting articles.")
+    articles = get_articles(question)
 
-    return prompt
+    print(f"{len(articles)} are retrieved.")
+
     relevant_articles = []
     for idx, article in enumerate(articles,start=1):
-        if select_relevant_articles(article,question):
+        print(f"Reading article {idx}.")
+        if select_relevant_article(article,question):
             relevant_articles.append(article)
+            print(f"Article {idx} is relevant.")
+        else:
+            print(f"Article {idx} is not relevant.")
+
+    answer = final_answer(question,relevant_articles)
+    return answer
 
 if __name__ == "__main__":
     question = ""
