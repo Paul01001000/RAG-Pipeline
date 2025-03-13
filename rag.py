@@ -1,11 +1,54 @@
 import sqlite3
 import json
+import re
 
 from ollama import chat
 from typing import List, Dict
 
-def json_parser(json_obj: str) -> bool:
-    pass
+def json_parser(content: str) -> bool:
+    def isolate_json(response: str) -> Dict | List:
+        try:
+            # Use a regular expression to find potential JSON objects
+            json_matches = re.findall(r"\{.*\}|\[.*\]", response) #Finds curly or square brackets
+
+            for match in json_matches:
+                try:
+                    # Attempt to parse each match as JSON
+                    return json.loads(match)  # return the first valid json found.
+
+                except json.JSONDecodeError:
+                    # If parsing fails, continue to the next match
+                    continue
+            return None  # No valid JSON found.
+
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            return None
+    
+    def json_contains_true(json_object: Dict | List) -> bool:
+        if isinstance(json_object, dict):
+            for value in json_object.values():
+                if value is True:
+                    return True
+                if isinstance(value, (dict, list)):
+                    if json_contains_true(value):
+                        return True
+                    
+        elif isinstance(json_object, list):
+            for item in json_object:
+                if item is True:
+                    return True
+                if isinstance(item, (dict, list)):
+                    if json_contains_true(item):
+                        return True
+                    
+        return False
+    
+    response = content.split("</think>")[1]
+    json_object = isolate_json(response)
+    return json_contains_true(json_object)
+
+        
 
 def select_relevant_category(category: str, question: str, model: str = "deepseek-r1:1.5b") -> bool:
     return True
@@ -22,7 +65,7 @@ def select_relevant_category(category: str, question: str, model: str = "deepsee
 def get_articles(question: str = "", db_path: str = "news.db") -> List[Dict]:
     #Gets all articles from the Database
     """
-    DB Data Source:
+    news.db Data Source:
     1. Misra, Rishabh. "News Category Dataset." arXiv preprint arXiv:2209.11429 (2022).
     2. Misra, Rishabh and Jigyasa Grover. "Sculpting Data for ML: The first act of Machine Learning." ISBN 9798585463570 (2021).
     https://www.kaggle.com/datasets/rmisra/news-category-dataset?resource=download
@@ -32,11 +75,9 @@ def get_articles(question: str = "", db_path: str = "news.db") -> List[Dict]:
 
     query = "SELECT DISTINCT category FROM News"
     cursor.execute(query)
-    rows = cursor.fetchall()
+    categories = cursor.fetchall()
 
-    categories = [category for category, in rows]
-
-    relevant_categories = [cat for cat in categories if select_relevant_category(cat,question)]
+    relevant_categories = [cat for cat, in categories if select_relevant_category(cat,question)]
 
     #SELECT headline,short_description,date FROM News WHERE category in ('cat1','cat2',...) LIMIT 20;
     query = "SELECT headline,short_description,date FROM News WHERE category in ( " + ",".join(["?"]*len(relevant_categories)) + " ) LIMIT 20"
@@ -89,9 +130,9 @@ def rag(question: str) -> str:
             print(f"Article {idx} is not relevant.")
 
     answer = final_answer(question,relevant_articles)
+    print(answer)
     return answer
 
 if __name__ == "__main__":
     question = ""
     res = rag(question)
-    print(res)
