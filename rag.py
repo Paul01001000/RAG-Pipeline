@@ -5,13 +5,15 @@ import re
 from ollama import chat
 from typing import List, Dict
 
-def json_parser(content: str) -> bool:
-    def isolate_json(response: str) -> Dict | List:
+def json_parser(response: str) -> bool:
+    def isolate_json(response: str):
         try:
             # Use a regular expression to find potential JSON objects
+            response = response.replace('\n','')
             json_matches = re.findall(r"\{.*\}|\[.*\]", response) #Finds curly or square brackets
-
+            print(json_matches)
             for match in json_matches:
+                print(match)
                 try:
                     # Attempt to parse each match as JSON
                     return json.loads(match)  # return the first valid json found.
@@ -25,7 +27,7 @@ def json_parser(content: str) -> bool:
             print(f"An error occurred: {e}")
             return None
     
-    def json_contains_true(json_object: Dict | List) -> bool:
+    def json_contains_true(json_object) -> bool:
         if isinstance(json_object, dict):
             for value in json_object.values():
                 if value is True:
@@ -44,14 +46,14 @@ def json_parser(content: str) -> bool:
                     
         return False
     
-    response = content.split("</think>")[1]
     json_object = isolate_json(response)
+    print(json_object)
     return json_contains_true(json_object)
 
         
 
 def select_relevant_category(category: str, question: str, model: str = "deepseek-r1:1.5b") -> bool:
-    return True
+    #return True
     prompt = ()
     message = [
         {
@@ -60,7 +62,12 @@ def select_relevant_category(category: str, question: str, model: str = "deepsee
         }
     ]
     res = chat(model,messages=message)
-    return json_parser(res.message.content)
+    try:
+        content = res.message.content.split("</think>")[1]
+        return json_parser(content)
+    except Exception as e:
+        print(f"An error occurred: {e}. Response cannot be processed")
+        return False
 
 def get_articles(question: str = "", db_path: str = "news.db") -> List[Dict]:
     #Gets all articles from the Database
@@ -100,7 +107,7 @@ def select_relevant_article(article: Dict, question: str, model: str = "deepseek
         }
     ]
     res = chat(model,messages=message)
-    return json_parser(res.message.content)
+    return json_parser(res.message.content.split("</think>")[1])
 
 def final_answer(question: str, articles: List[Dict],model: str = "deepseek-r1:1.5b") -> str:
     #Returns final answer to question by using the selected articles
